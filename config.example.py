@@ -20,4 +20,5 @@ MARKET_API_URL = 'https://api.coingecko.com/api/v3'
 # Refresh Rates (frontend)
 MARKET_REFRESH = 5000  # ms
 PORTFOLIO_REFRESH = 10000  # ms
+TRADE_FEE_RATE = 0.001  # 交易费率：0.1%（双向收费）
 
