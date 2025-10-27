@@ -32,7 +32,7 @@ AITradeGame 是支持本地和在线双版本的AI 交易模拟平台。
 
 ### 桌面版本
 
-从 GitHub 的 releases 页面下载 AITradeGame.exe。双击可执行文件运行。软件将自动打开界面。开始添加 AI 模型并开始交易。
+从 GitHub 的 releases 页面下载 AITradeGame.exe。双击可执行文件运行。软件将自动打开界面。开始添加 AI 模型并开始交易。https://github.com/chadyi/AITradeGame/releases/tag/main
 
 或者，从 GitHub 克隆仓库。使用 pip install -r requirements.txt 安装依赖。使用 python app.py 运行应用程序，然后访问 http://localhost:5000。
 
@@ -70,6 +70,6 @@ AITradeGame 是支持本地和在线双版本的AI 交易模拟平台。
 
 带排行榜和社交功能的在线版本：https://aitradegame.com
 
-桌面构建和发布版本：https://github.com/chadyi/AITradeGame/releases/AITradeGame.zip
+桌面构建和发布版本：https://github.com/chadyi/AITradeGame/releases/tag/main
 
 源代码仓库：https://github.com/chadyi/AITradeGame

@@ -19,6 +19,7 @@ Includes a Windows one-click standalone executable that runs without installatio
 ### Desktop Version (Local)
 
 AI-driven trading strategies based on large language models, compatible with OpenAI, DeepSeek, Claude, and other models. Leveraged portfolio management with ECharts visualizations. 100% privacy with all data stored in local database.
+https://github.com/chadyi/AITradeGame/releases/tag/main
 
 ### Online Version (Public)
 
@@ -70,6 +71,6 @@ This is a simulated trading platform for testing AI models and strategies. It is
 
 Online version with leaderboard and social features: https://aitradegame.com
 
-Desktop builds and releases: https://github.com/chadyi/AITradeGame/releases/AITradeGame.zip
+Desktop builds and releases: https://github.com/chadyi/AITradeGame/releases/tag/main
 
 Source code repository: https://github.com/chadyi/AITradeGame
