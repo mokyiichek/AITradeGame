@@ -1,12 +1,13 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
-env/
-venv/
-ENV/
 build/
 develop-eggs/
 dist/
@@ -23,30 +24,66 @@ wheels/
 .installed.cfg
 *.egg
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# PyInstaller
+*.manifest
+*.spec
 
-# IDE
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
-Thumbs.db
+
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
 
 # Logs
 *.log
 
-# Environment
-.env
-.env.local
-
-# Backup files
+# Temporary files
+*.tmp
 *.bak
-*.backup
-*_backup.*
+*~
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Project specific
+AITradeGame.db
+trading_bot.db
+config.py
+
+# Compiled files
+*.exe
+*.msi
+*.dmg
+build_package.py
+一键打包.bat

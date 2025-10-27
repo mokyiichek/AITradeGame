@@ -1,81 +1,75 @@
-# AITradeGame 大模型的交易能力测试项目
+# AITradeGame - Open Source AI Trading Simulator
+
+[English](README.md) | [中文](README_ZH.md)
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-基于 Web 的加密货币交易模拟平台，采用 AI 驱动的决策系统。
+AITradeGame is an AI trading simulator that supports both local and online versions.
 
-在线版（加了排行榜功能）：https://aitradegame.com/ 
+Provides an online version with interactive features and leaderboards.
 
-## 功能特性
+Local version stores all data on your computer, no cloud storage, no tracking.
 
-- 实时加密货币市场数据集成
-- 基于大语言模型的 AI 交易策略
-- 支持杠杆的投资组合管理
-- 实时图表的交互式仪表板
-- 交易历史与性能跟踪
+Includes a Windows one-click standalone executable that runs without installation.
 
-## 技术栈
+## Features
 
-- 后端：Python/Flask
-- 前端：原生 JavaScript、ECharts
-- 数据库：SQLite
-- AI 接口：OpenAI 兼容格式（支持 OpenAI、DeepSeek、Claude 等）
+### Desktop Version (Local)
 
-## 安装
+AI-driven trading strategies based on large language models, compatible with OpenAI, DeepSeek, Claude, and other models. Leveraged portfolio management with ECharts visualizations. 100% privacy with all data stored in local database.
 
-```bash
-pip install -r requirements.txt
-python app.py
-```
+### Online Version (Public)
 
-访问地址：`http://localhost:5000`
+Leaderboard functionality to compete with AI enthusiasts worldwide. Real-time rankings display providing performance comparisons and analysis. Auto-sync and background operation enabling seamless multi-device experience.
 
-## 配置
+## Quick Start
 
-通过 Web 界面添加交易模型：
-- 模型名称
-- API 密钥
-- API 地址
-- 模型标识符
-- 初始资金
+### Try Online Version
 
-## 项目结构
+Launch the online version at https://aitradegame.com without any installation.
 
-```
-trading_bot/
-├── app.py              # Flask 应用主程序
-├── trading_engine.py   # 交易逻辑引擎
-├── ai_trader.py        # AI 集成模块
-├── database.py         # 数据层
-├── market_data.py      # 市场数据接口
-├── static/             # CSS/JS 资源
-├── templates/          # HTML 模板
-└── requirements.txt    # Python 依赖
-```
+### Desktop Version
 
-## 支持的 AI 模型
+Download AITradeGame.exe from GitHub releases. Double-click the executable to run. The interface will open automatically. Start adding AI models and begin trading.
 
-兼容 OpenAI 格式的 API：
-- OpenAI (gpt-4, gpt-3.5-turbo)
-- DeepSeek (deepseek-chat)
-- Claude (通过 OpenRouter)
+Alternatively, clone the repository from GitHub. Install dependencies with pip install -r requirements.txt. Run the application with python app.py and visit http://localhost:5000.
 
-## 使用方法
+## Configuration
 
-1. 启动服务器
-2. 添加 AI 模型配置
-3. 系统自动开始交易
-4. 实时监控投资组合
+Configure AI models through the web interface opened by the software. Enter model name, API key, and API address. Choose your initial capital amount to start trading.
 
-## 注意事项
+## Supported AI Models
 
-- 这是一个模拟交易平台（仅限纸面交易）
-- 需要有效的 AI 模型 API 密钥
-- 需要互联网连接以获取市场数据
+Supports all OpenAI-compatible APIs. This includes OpenAI models like gpt-4 and gpt-3.5-turbo, DeepSeek models including deepseek-chat, Claude models through OpenRouter, and any other services compatible with OpenAI API format. More protocols are being added.
 
-## 贡献
+## Usage
 
-欢迎贡献代码！
+Start the server by running AITradeGame.exe or python app.py. Add AI model configuration through the web interface at http://localhost:5000. The system automatically begins trading simulation based on your configuration.
 
-**免责声明**：本平台仅用于教育和模拟目的，不构成任何投资建议。
+## Privacy and Security
+
+All data is stored in the AITradeGame.db SQLite file in the same directory as the executable. No external servers are contacted except your specified AI API endpoints. No user accounts or login required - everything runs locally.
+
+## Development
+
+Development requires Python 3.9 or later. Internet connection is needed for market data and AI API calls.
+
+Install all dependencies with: pip install -r requirements.txt
+
+## Contributing
+
+Community contributions are welcome.
+
+## Disclaimer
+
+This is a simulated trading platform for testing AI models and strategies. It is not real trading and no actual money is involved. Always conduct your own research and analysis before making investment decisions. No warranties are provided regarding trading outcomes or AI performance.
+
+## Links
+
+Online version with leaderboard and social features: https://aitradegame.com
+
+Desktop builds and releases: https://github.com/chadyi/AITradeGame/releases/AITradeGame.zip
+
+Source code repository: https://github.com/chadyi/AITradeGame

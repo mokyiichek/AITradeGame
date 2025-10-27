@@ -12,7 +12,7 @@ from database import Database
 app = Flask(__name__)
 CORS(app)
 
-db = Database('trading_bot.db')
+db = Database('AITradeGame.db')
 market_fetcher = MarketDataFetcher()
 trading_engines = {}
 auto_trading = True
@@ -238,11 +238,18 @@ def init_trading_engines():
         print(f"[ERROR] Init engines failed: {e}\n")
 
 if __name__ == '__main__':
-    db.init_db()
+    import webbrowser
+    import os
     
     print("\n" + "=" * 60)
-    print("AI Trading Platform")
+    print("AITradeGame - Starting...")
     print("=" * 60)
+    print("[INFO] Initializing database...")
+    
+    db.init_db()
+    
+    print("[INFO] Database initialized")
+    print("[INFO] Initializing trading engines...")
     
     init_trading_engines()
     
@@ -252,8 +259,22 @@ if __name__ == '__main__':
         print("[INFO] Auto-trading enabled")
     
     print("\n" + "=" * 60)
+    print("AITradeGame is running!")
     print("Server: http://localhost:5000")
     print("Press Ctrl+C to stop")
     print("=" * 60 + "\n")
+    
+    # 自动打开浏览器
+    def open_browser():
+        time.sleep(1.5)  # 等待服务器启动
+        url = "http://localhost:5000"
+        try:
+            webbrowser.open(url)
+            print(f"[INFO] Browser opened: {url}")
+        except Exception as e:
+            print(f"[WARN] Could not open browser: {e}")
+    
+    browser_thread = threading.Thread(target=open_browser, daemon=True)
+    browser_thread.start()
     
     app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False)

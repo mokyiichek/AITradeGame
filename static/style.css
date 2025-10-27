@@ -100,6 +100,28 @@ body {
     color: var(--text-2);
 }
 
+.header-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: var(--text-2);
+    text-decoration: none;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.header-link:hover {
+    background: var(--bg-2);
+    color: var(--primary);
+}
+
+.header-link-text {
+    font-size: 14px;
+}
+
 .header-right {
     display: flex;
     gap: 12px;

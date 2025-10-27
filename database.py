@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 class Database:
-    def __init__(self, db_path: str = 'trading_bot.db'):
+    def __init__(self, db_path: str = 'AITradeGame.db'):
         self.db_path = db_path
         
     def get_connection(self):
