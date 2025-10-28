@@ -1,13 +1,62 @@
 class TradingApp {
     constructor() {
         this.currentModelId = null;
+        this.isAggregatedView = false;
         this.chart = null;
         this.refreshIntervals = {
             market: null,
             portfolio: null,
             trades: null
         };
+        this.isChinese = this.detectLanguage();
         this.init();
+    }
+
+    detectLanguage() {
+        // Check if the page language is Chinese or if user's language includes Chinese
+        const lang = document.documentElement.lang || navigator.language || navigator.userLanguage;
+        return lang.toLowerCase().includes('zh');
+    }
+
+    formatPnl(value, isPnl = false) {
+        // Format profit/loss value based on language preference
+        if (!isPnl || value === 0) {
+            return `$${Math.abs(value).toFixed(2)}`;
+        }
+
+        const absValue = Math.abs(value);
+        const formatted = `$${absValue.toFixed(2)}`;
+
+        if (this.isChinese) {
+            // Chinese convention: red for profit (positive), show + sign
+            if (value > 0) {
+                return `+${formatted}`;
+            } else {
+                return `-${formatted}`;
+            }
+        } else {
+            // Default: show sign for positive values
+            if (value > 0) {
+                return `+${formatted}`;
+            }
+            return formatted;
+        }
+    }
+
+    getPnlClass(value, isPnl = false) {
+        // Return CSS class based on profit/loss and language preference
+        if (!isPnl || value === 0) {
+            return '';
+        }
+
+        if (value > 0) {
+            // In Chinese: positive (profit) should be red
+            return this.isChinese ? 'positive' : 'positive';
+        } else if (value < 0) {
+            // In Chinese: negative (loss) should not be red
+            return this.isChinese ? 'negative' : 'negative';
+        }
+        return '';
     }
 
     init() {
@@ -35,8 +84,9 @@ class TradingApp {
             const models = await response.json();
             this.renderModels(models);
 
-            if (models.length > 0 && !this.currentModelId) {
-                this.selectModel(models[0].id);
+            // Initialize with aggregated view if no model is selected
+            if (models.length > 0 && !this.currentModelId && !this.isAggregatedView) {
+                this.showAggregatedView();
             }
         } catch (error) {
             console.error('Failed to load models:', error);
@@ -45,14 +95,28 @@ class TradingApp {
 
     renderModels(models) {
         const container = document.getElementById('modelList');
-        
+
         if (models.length === 0) {
             container.innerHTML = '<div class="empty-state">暂无模型</div>';
             return;
         }
 
-        container.innerHTML = models.map(model => `
-            <div class="model-item ${model.id === this.currentModelId ? 'active' : ''}" 
+        // Add aggregated view option at the top
+        let html = `
+            <div class="model-item ${this.isAggregatedView ? 'active' : ''}"
+                 onclick="app.showAggregatedView()">
+                <div class="model-name">
+                    <i class="bi bi-bar-chart-fill"></i> 聚合视图
+                </div>
+                <div class="model-info">
+                    <span>所有模型汇总</span>
+                </div>
+            </div>
+        `;
+
+        // Add individual models
+        html += models.map(model => `
+            <div class="model-item ${model.id === this.currentModelId && !this.isAggregatedView ? 'active' : ''}"
                  onclick="app.selectModel(${model.id})">
                 <div class="model-name">${model.name}</div>
                 <div class="model-info">
@@ -63,10 +127,20 @@ class TradingApp {
                 </div>
             </div>
         `).join('');
+
+        container.innerHTML = html;
+    }
+
+    async showAggregatedView() {
+        this.isAggregatedView = true;
+        this.currentModelId = null;
+        this.loadModels();
+        await this.loadAggregatedData();
     }
 
     async selectModel(modelId) {
         this.currentModelId = modelId;
+        this.isAggregatedView = false;
         this.loadModels();
         await this.loadModelData();
     }
@@ -81,9 +155,9 @@ class TradingApp {
                 fetch(`/api/models/${this.currentModelId}/conversations?limit=20`).then(r => r.json())
             ]);
 
-            this.updateStats(portfolio.portfolio);
-            this.updateChart(portfolio.account_value_history, portfolio.portfolio.total_value);
-            this.updatePositions(portfolio.portfolio.positions);
+            this.updateStats(portfolio.portfolio, false);
+            this.updateSingleModelChart(portfolio.account_value_history, portfolio.portfolio.total_value);
+            this.updatePositions(portfolio.portfolio.positions, false);
             this.updateTrades(trades);
             this.updateConversations(conversations);
         } catch (error) {
@@ -91,49 +165,77 @@ class TradingApp {
         }
     }
 
-    updateStats(portfolio) {
+    async loadAggregatedData() {
+        try {
+            const response = await fetch('/api/aggregated/portfolio');
+            const data = await response.json();
+
+            this.updateStats(data.portfolio, true);
+            this.updateMultiModelChart(data.chart_data);
+            this.updatePositions(data.portfolio.positions, true);
+            this.updateTrades([]); // Empty trades for aggregated view
+            this.updateConversations([]); // Empty conversations for aggregated view
+        } catch (error) {
+            console.error('Failed to load aggregated data:', error);
+        }
+    }
+
+    updateStats(portfolio, isAggregated = false) {
         const stats = [
-            { value: portfolio.total_value || 0, class: portfolio.total_value > portfolio.initial_capital ? 'positive' : portfolio.total_value < portfolio.initial_capital ? 'negative' : '' },
-            { value: portfolio.cash || 0, class: '' },
-            { value: portfolio.realized_pnl || 0, class: portfolio.realized_pnl > 0 ? 'positive' : portfolio.realized_pnl < 0 ? 'negative' : '' },
-            { value: portfolio.unrealized_pnl || 0, class: portfolio.unrealized_pnl > 0 ? 'positive' : portfolio.unrealized_pnl < 0 ? 'negative' : '' }
+            { value: portfolio.total_value || 0, isPnl: false },
+            { value: portfolio.cash || 0, isPnl: false },
+            { value: portfolio.realized_pnl || 0, isPnl: true },
+            { value: portfolio.unrealized_pnl || 0, isPnl: true }
         ];
 
         document.querySelectorAll('.stat-value').forEach((el, index) => {
             if (stats[index]) {
-                el.textContent = `$${Math.abs(stats[index].value).toFixed(2)}`;
-                el.className = `stat-value ${stats[index].class}`;
+                el.textContent = this.formatPnl(stats[index].value, stats[index].isPnl);
+                el.className = `stat-value ${this.getPnlClass(stats[index].value, stats[index].isPnl)}`;
             }
         });
+
+        // Update title for aggregated view
+        const titleElement = document.querySelector('.account-info h2');
+        if (titleElement) {
+            if (isAggregated) {
+                titleElement.innerHTML = '<i class="bi bi-bar-chart-fill"></i> 聚合账户总览';
+            } else {
+                titleElement.innerHTML = '<i class="bi bi-wallet2"></i> 账户信息';
+            }
+        }
     }
 
-    updateChart(history, currentValue) {
+    updateSingleModelChart(history, currentValue) {
         const chartDom = document.getElementById('accountChart');
-        
-        if (!this.chart) {
-            this.chart = echarts.init(chartDom);
-            window.addEventListener('resize', () => {
-                if (this.chart) {
-                    this.chart.resize();
-                }
-            });
+
+        // Dispose existing chart to avoid state pollution
+        if (this.chart) {
+            this.chart.dispose();
         }
 
+        this.chart = echarts.init(chartDom);
+        window.addEventListener('resize', () => {
+            if (this.chart) {
+                this.chart.resize();
+            }
+        });
+
         const data = history.reverse().map(h => ({
-            time: new Date(h.timestamp.replace(' ', 'T') + 'Z').toLocaleTimeString('zh-CN', { 
+            time: new Date(h.timestamp.replace(' ', 'T') + 'Z').toLocaleTimeString('zh-CN', {
                 timeZone: 'Asia/Shanghai',
-                hour: '2-digit', 
-                minute: '2-digit' 
+                hour: '2-digit',
+                minute: '2-digit'
             }),
             value: h.total_value
         }));
 
         if (currentValue !== undefined && currentValue !== null) {
             const now = new Date();
-            const currentTime = now.toLocaleTimeString('zh-CN', { 
+            const currentTime = now.toLocaleTimeString('zh-CN', {
                 timeZone: 'Asia/Shanghai',
-                hour: '2-digit', 
-                minute: '2-digit' 
+                hour: '2-digit',
+                minute: '2-digit'
             });
             data.push({
                 time: currentTime,
@@ -145,7 +247,7 @@ class TradingApp {
             grid: {
                 left: '60',
                 right: '20',
-                bottom: '30',
+                bottom: '40',
                 top: '20',
                 containLabel: false
             },
@@ -160,8 +262,8 @@ class TradingApp {
                 type: 'value',
                 scale: true,
                 axisLine: { lineStyle: { color: '#e5e6eb' } },
-                axisLabel: { 
-                    color: '#86909c', 
+                axisLabel: {
+                    color: '#86909c',
                     fontSize: 11,
                     formatter: (value) => `$${value.toLocaleString()}`
                 },
@@ -192,13 +294,13 @@ class TradingApp {
                 textStyle: { color: '#1d2129' },
                 formatter: (params) => {
                     const value = params[0].value;
-                    return `${params[0].axisValue}<br/>$${value.toFixed(2)}`;
+                    return `${params[0].axisValue}<br/>账户价值: $${value.toFixed(2)}`;
                 }
             }
         };
 
         this.chart.setOption(option);
-        
+
         setTimeout(() => {
             if (this.chart) {
                 this.chart.resize();
@@ -206,29 +308,183 @@ class TradingApp {
         }, 100);
     }
 
-    updatePositions(positions) {
+    updateMultiModelChart(chartData) {
+        const chartDom = document.getElementById('accountChart');
+
+        // Dispose existing chart to avoid state pollution
+        if (this.chart) {
+            this.chart.dispose();
+        }
+
+        this.chart = echarts.init(chartDom);
+        window.addEventListener('resize', () => {
+            if (this.chart) {
+                this.chart.resize();
+            }
+        });
+
+        if (!chartData || chartData.length === 0) {
+            // Show empty state for multi-model chart
+            this.chart.setOption({
+                title: {
+                    text: '暂无模型数据',
+                    left: 'center',
+                    top: 'center',
+                    textStyle: { color: '#86909c', fontSize: 14 }
+                },
+                xAxis: { show: false },
+                yAxis: { show: false },
+                series: []
+            });
+            return;
+        }
+
+        // Colors for different models
+        const colors = [
+            '#3370ff', '#ff6b35', '#00b96b', '#722ed1', '#fa8c16',
+            '#eb2f96', '#13c2c2', '#faad14', '#f5222d', '#52c41a'
+        ];
+
+        // Prepare time axis - get all timestamps and sort them chronologically
+        const allTimestamps = new Set();
+        chartData.forEach(model => {
+            model.data.forEach(point => {
+                allTimestamps.add(point.timestamp);
+            });
+        });
+
+        // Convert to array and sort by timestamp (not string sort)
+        const timeAxis = Array.from(allTimestamps).sort((a, b) => {
+            const timeA = new Date(a.replace(' ', 'T') + 'Z').getTime();
+            const timeB = new Date(b.replace(' ', 'T') + 'Z').getTime();
+            return timeA - timeB;
+        });
+
+        // Format time labels for display
+        const formattedTimeAxis = timeAxis.map(timestamp => {
+            return new Date(timestamp.replace(' ', 'T') + 'Z').toLocaleTimeString('zh-CN', {
+                timeZone: 'Asia/Shanghai',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        });
+
+        // Prepare series data for each model
+        const series = chartData.map((model, index) => {
+            const color = colors[index % colors.length];
+
+            // Create data points aligned with time axis
+            const dataPoints = timeAxis.map(time => {
+                const point = model.data.find(p => p.timestamp === time);
+                return point ? point.value : null;
+            });
+
+            return {
+                name: model.model_name,
+                type: 'line',
+                data: dataPoints,
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 4,
+                lineStyle: { color: color, width: 2 },
+                itemStyle: { color: color },
+                connectNulls: true  // Connect points even with null values
+            };
+        });
+
+        const option = {
+            title: {
+                text: '模型表现对比',
+                left: 'center',
+                top: 10,
+                textStyle: { color: '#1d2129', fontSize: 16, fontWeight: 'normal' }
+            },
+            grid: {
+                left: '60',
+                right: '20',
+                bottom: '80',
+                top: '50',
+                containLabel: false
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: formattedTimeAxis,
+                axisLine: { lineStyle: { color: '#e5e6eb' } },
+                axisLabel: { color: '#86909c', fontSize: 11, rotate: 45 }
+            },
+            yAxis: {
+                type: 'value',
+                scale: true,
+                axisLine: { lineStyle: { color: '#e5e6eb' } },
+                axisLabel: {
+                    color: '#86909c',
+                    fontSize: 11,
+                    formatter: (value) => `$${value.toLocaleString()}`
+                },
+                splitLine: { lineStyle: { color: '#f2f3f5' } }
+            },
+            legend: {
+                data: chartData.map(model => model.model_name),
+                bottom: 10,
+                itemGap: 20,
+                textStyle: { color: '#1d2129', fontSize: 12 }
+            },
+            series: series,
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderColor: '#e5e6eb',
+                borderWidth: 1,
+                textStyle: { color: '#1d2129' },
+                formatter: (params) => {
+                    let result = `${params[0].axisValue}<br/>`;
+                    params.forEach(param => {
+                        if (param.value !== null) {
+                            result += `${param.marker}${param.seriesName}: $${param.value.toFixed(2)}<br/>`;
+                        }
+                    });
+                    return result;
+                }
+            }
+        };
+
+        this.chart.setOption(option);
+
+        setTimeout(() => {
+            if (this.chart) {
+                this.chart.resize();
+            }
+        }, 100);
+    }
+
+    updatePositions(positions, isAggregated = false) {
         const tbody = document.getElementById('positionsBody');
-        
+
         if (positions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无持仓</td></tr>';
+            if (isAggregated) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">聚合视图暂无持仓</td></tr>';
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无持仓</td></tr>';
+            }
             return;
         }
 
         tbody.innerHTML = positions.map(pos => {
             const sideClass = pos.side === 'long' ? 'badge-long' : 'badge-short';
             const sideText = pos.side === 'long' ? '做多' : '做空';
-            
-            const currentPrice = pos.current_price !== null && pos.current_price !== undefined 
-                ? `$${pos.current_price.toFixed(2)}` 
+
+            const currentPrice = pos.current_price !== null && pos.current_price !== undefined
+                ? `$${pos.current_price.toFixed(2)}`
                 : '-';
-            
+
             let pnlDisplay = '-';
             let pnlClass = '';
             if (pos.pnl !== undefined && pos.pnl !== 0) {
-                pnlClass = pos.pnl > 0 ? 'text-success' : 'text-danger';
-                pnlDisplay = `${pos.pnl > 0 ? '+' : ''}$${pos.pnl.toFixed(2)}`;
+                pnlDisplay = this.formatPnl(pos.pnl, true);
+                pnlClass = this.getPnlClass(pos.pnl, true);
             }
-            
+
             return `
                 <tr>
                     <td><strong>${pos.coin}</strong></td>
@@ -241,13 +497,23 @@ class TradingApp {
                 </tr>
             `;
         }).join('');
+
+        // Update positions title for aggregated view
+        const positionsTitle = document.querySelector('#positionsTab .card-header h3');
+        if (positionsTitle) {
+            if (isAggregated) {
+                positionsTitle.innerHTML = '<i class="bi bi-collection"></i> 聚合持仓';
+            } else {
+                positionsTitle.innerHTML = '<i class="bi bi-briefcase"></i> 当前持仓';
+            }
+        }
     }
 
     updateTrades(trades) {
         const tbody = document.getElementById('tradesBody');
-        
+
         if (trades.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无交易记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无交易记录</td></tr>';
             return;
         }
 
@@ -258,7 +524,8 @@ class TradingApp {
                 'close_position': { badge: 'badge-close', text: '平仓' }
             };
             const signal = signalMap[trade.signal] || { badge: '', text: trade.signal };
-            const pnlClass = trade.pnl > 0 ? 'text-success' : trade.pnl < 0 ? 'text-danger' : '';
+            const pnlDisplay = this.formatPnl(trade.pnl, true);
+            const pnlClass = this.getPnlClass(trade.pnl, true);
 
             return `
                 <tr>
@@ -267,7 +534,7 @@ class TradingApp {
                     <td><span class="badge ${signal.badge}">${signal.text}</span></td>
                     <td>${trade.quantity.toFixed(4)}</td>
                     <td>$${trade.price.toFixed(2)}</td>
-                    <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
+                    <td class="${pnlClass}">${pnlDisplay}</td>
                     <td>$${trade.fee.toFixed(2)}</td>
                 </tr>
             `;
@@ -276,7 +543,7 @@ class TradingApp {
 
     updateConversations(conversations) {
         const container = document.getElementById('conversationsBody');
-        
+
         if (conversations.length === 0) {
             container.innerHTML = '<div class="empty-state">暂无对话记录</div>';
             return;
@@ -302,11 +569,11 @@ class TradingApp {
 
     renderMarketPrices(prices) {
         const container = document.getElementById('marketPrices');
-        
+
         container.innerHTML = Object.entries(prices).map(([coin, data]) => {
             const changeClass = data.change_24h >= 0 ? 'positive' : 'negative';
             const changeIcon = data.change_24h >= 0 ? '▲' : '▼';
-            
+
             return `
                 <div class="price-item">
                     <div>
@@ -322,7 +589,7 @@ class TradingApp {
     switchTab(tabName) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        
+
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
         document.getElementById(`${tabName}Tab`).classList.add('active');
     }
@@ -378,8 +645,10 @@ class TradingApp {
             if (response.ok) {
                 if (this.currentModelId === modelId) {
                     this.currentModelId = null;
+                    this.showAggregatedView();
+                } else {
+                    this.loadModels();
                 }
-                this.loadModels();
             }
         } catch (error) {
             console.error('Failed to delete model:', error);
@@ -398,7 +667,7 @@ class TradingApp {
         await Promise.all([
             this.loadModels(),
             this.loadMarketPrices(),
-            this.loadModelData()
+            this.isAggregatedView ? this.loadAggregatedData() : this.loadModelData()
         ]);
     }
 
@@ -408,8 +677,12 @@ class TradingApp {
         }, 5000);
 
         this.refreshIntervals.portfolio = setInterval(() => {
-            if (this.currentModelId) {
-                this.loadModelData();
+            if (this.isAggregatedView || this.currentModelId) {
+                if (this.isAggregatedView) {
+                    this.loadAggregatedData();
+                } else {
+                    this.loadModelData();
+                }
             }
         }, 10000);
     }

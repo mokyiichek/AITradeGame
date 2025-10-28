@@ -87,3 +87,4 @@ config.py
 *.dmg
 build_package.py
 一键打包.bat
+build_all.py

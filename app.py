@@ -97,6 +97,81 @@ def get_conversations(model_id):
     conversations = db.get_conversations(model_id, limit=limit)
     return jsonify(conversations)
 
+@app.route('/api/aggregated/portfolio', methods=['GET'])
+def get_aggregated_portfolio():
+    """Get aggregated portfolio data across all models"""
+    prices_data = market_fetcher.get_current_prices(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE'])
+    current_prices = {coin: prices_data[coin]['price'] for coin in prices_data}
+
+    # Get aggregated data
+    models = db.get_all_models()
+    total_portfolio = {
+        'total_value': 0,
+        'cash': 0,
+        'positions_value': 0,
+        'realized_pnl': 0,
+        'unrealized_pnl': 0,
+        'initial_capital': 0,
+        'positions': []
+    }
+
+    all_positions = {}
+
+    for model in models:
+        portfolio = db.get_portfolio(model['id'], current_prices)
+        if portfolio:
+            total_portfolio['total_value'] += portfolio.get('total_value', 0)
+            total_portfolio['cash'] += portfolio.get('cash', 0)
+            total_portfolio['positions_value'] += portfolio.get('positions_value', 0)
+            total_portfolio['realized_pnl'] += portfolio.get('realized_pnl', 0)
+            total_portfolio['unrealized_pnl'] += portfolio.get('unrealized_pnl', 0)
+            total_portfolio['initial_capital'] += portfolio.get('initial_capital', 0)
+
+            # Aggregate positions by coin and side
+            for pos in portfolio.get('positions', []):
+                key = f"{pos['coin']}_{pos['side']}"
+                if key not in all_positions:
+                    all_positions[key] = {
+                        'coin': pos['coin'],
+                        'side': pos['side'],
+                        'quantity': 0,
+                        'avg_price': 0,
+                        'total_cost': 0,
+                        'leverage': pos['leverage'],
+                        'current_price': pos['current_price'],
+                        'pnl': 0
+                    }
+
+                # Weighted average calculation
+                current_pos = all_positions[key]
+                current_cost = current_pos['quantity'] * current_pos['avg_price']
+                new_cost = pos['quantity'] * pos['avg_price']
+                total_quantity = current_pos['quantity'] + pos['quantity']
+
+                if total_quantity > 0:
+                    current_pos['avg_price'] = (current_cost + new_cost) / total_quantity
+                    current_pos['quantity'] = total_quantity
+                    current_pos['total_cost'] = current_cost + new_cost
+                    current_pos['pnl'] = (pos['current_price'] - current_pos['avg_price']) * total_quantity
+
+    total_portfolio['positions'] = list(all_positions.values())
+
+    # Get multi-model chart data
+    chart_data = db.get_multi_model_chart_data(limit=100)
+
+    return jsonify({
+        'portfolio': total_portfolio,
+        'chart_data': chart_data,
+        'model_count': len(models)
+    })
+
+@app.route('/api/models/chart-data', methods=['GET'])
+def get_models_chart_data():
+    """Get chart data for all models"""
+    limit = request.args.get('limit', 100, type=int)
+    chart_data = db.get_multi_model_chart_data(limit=limit)
+    return jsonify(chart_data)
+
 @app.route('/api/market/prices', methods=['GET'])
 def get_market_prices():
     coins = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE']

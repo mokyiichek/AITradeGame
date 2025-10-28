@@ -330,3 +330,87 @@ class Database:
         conn.close()
         return [dict(row) for row in rows]
 
+    def get_aggregated_account_value_history(self, limit: int = 100) -> List[Dict]:
+        """Get aggregated account value history across all models"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get the most recent timestamp for each time point across all models
+        cursor.execute('''
+            SELECT timestamp,
+                   SUM(total_value) as total_value,
+                   SUM(cash) as cash,
+                   SUM(positions_value) as positions_value,
+                   COUNT(DISTINCT model_id) as model_count
+            FROM (
+                SELECT timestamp,
+                       total_value,
+                       cash,
+                       positions_value,
+                       model_id,
+                       ROW_NUMBER() OVER (PARTITION BY model_id, DATE(timestamp) ORDER BY timestamp DESC) as rn
+                FROM account_values
+            ) grouped
+            WHERE rn <= 10  -- Keep up to 10 records per model per day for aggregation
+            GROUP BY DATE(timestamp), HOUR(timestamp)
+            ORDER BY timestamp DESC
+            LIMIT ?
+        ''', (limit,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        result = []
+        for row in rows:
+            result.append({
+                'timestamp': row['timestamp'],
+                'total_value': row['total_value'],
+                'cash': row['cash'],
+                'positions_value': row['positions_value'],
+                'model_count': row['model_count']
+            })
+
+        return result
+
+    def get_multi_model_chart_data(self, limit: int = 100) -> List[Dict]:
+        """Get chart data for all models to display in multi-line chart"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get all models
+        cursor.execute('SELECT id, name FROM models')
+        models = cursor.fetchall()
+
+        chart_data = []
+
+        for model in models:
+            model_id = model['id']
+            model_name = model['name']
+
+            # Get account value history for this model
+            cursor.execute('''
+                SELECT timestamp, total_value FROM account_values
+                WHERE model_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            ''', (model_id, limit))
+
+            history = cursor.fetchall()
+
+            if history:
+                # Convert to list of dicts with model info
+                model_data = {
+                    'model_id': model_id,
+                    'model_name': model_name,
+                    'data': [
+                        {
+                            'timestamp': row['timestamp'],
+                            'value': row['total_value']
+                        } for row in history
+                    ]
+                }
+                chart_data.append(model_data)
+
+        conn.close()
+        return chart_data
+
