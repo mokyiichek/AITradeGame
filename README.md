@@ -42,6 +42,31 @@ Download AITradeGame.exe from GitHub releases. Double-click the executable to ru
 
 Alternatively, clone the repository from GitHub. Install dependencies with pip install -r requirements.txt. Run the application with python app.py and visit http://localhost:5000.
 
+### Docker Deployment
+
+You can also run AITradeGame using Docker:
+
+**Using docker-compose (recommended):**
+```bash
+# Build and start the container
+docker-compose up -d
+
+# Access the application at http://localhost:5000
+```
+
+**Using docker directly:**
+```bash
+# Build the image
+docker build -t aitradegame .
+
+# Run the container
+docker run -d -p 5000:5000 -v $(pwd)/data:/app/data aitradegame
+
+# Access the application at http://localhost:5000
+```
+
+The data directory will be created automatically to store the SQLite database. To stop the container, run `docker-compose down`.
+
 ## Configuration
 
 ### API Provider Setup
