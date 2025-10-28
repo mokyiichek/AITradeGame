@@ -280,6 +280,32 @@ def get_leaderboard():
     leaderboard.sort(key=lambda x: x['returns'], reverse=True)
     return jsonify(leaderboard)
 
+@app.route('/api/settings', methods=['GET'])
+def get_settings():
+    """Get system settings"""
+    try:
+        settings = db.get_settings()
+        return jsonify(settings)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/settings', methods=['PUT'])
+def update_settings():
+    """Update system settings"""
+    try:
+        data = request.json
+        trading_frequency_minutes = int(data.get('trading_frequency_minutes', 60))
+        trading_fee_rate = float(data.get('trading_fee_rate', 0.001))
+
+        success = db.update_settings(trading_frequency_minutes, trading_fee_rate)
+
+        if success:
+            return jsonify({'success': True, 'message': 'Settings updated successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to update settings'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 def init_trading_engines():
     try:
         models = db.get_all_models()

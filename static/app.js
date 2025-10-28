@@ -73,6 +73,11 @@ class TradingApp {
         document.getElementById('submitBtn').addEventListener('click', () => this.submitModel());
         document.getElementById('refreshBtn').addEventListener('click', () => this.refresh());
 
+        document.getElementById('settingsBtn').addEventListener('click', () => this.showSettingsModal());
+        document.getElementById('closeSettingsModalBtn').addEventListener('click', () => this.hideSettingsModal());
+        document.getElementById('cancelSettingsBtn').addEventListener('click', () => this.hideSettingsModal());
+        document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettings());
+
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
         });
@@ -691,6 +696,61 @@ class TradingApp {
         Object.values(this.refreshIntervals).forEach(interval => {
             if (interval) clearInterval(interval);
         });
+    }
+
+    async showSettingsModal() {
+        try {
+            const response = await fetch('/api/settings');
+            const settings = await response.json();
+
+            document.getElementById('tradingFrequency').value = settings.trading_frequency_minutes;
+            document.getElementById('tradingFeeRate').value = settings.trading_fee_rate;
+
+            document.getElementById('settingsModal').classList.add('show');
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+            alert('加载设置失败');
+        }
+    }
+
+    hideSettingsModal() {
+        document.getElementById('settingsModal').classList.remove('show');
+    }
+
+    async saveSettings() {
+        const tradingFrequency = parseInt(document.getElementById('tradingFrequency').value);
+        const tradingFeeRate = parseFloat(document.getElementById('tradingFeeRate').value);
+
+        if (!tradingFrequency || tradingFrequency < 1 || tradingFrequency > 1440) {
+            alert('请输入有效的交易频率（1-1440分钟）');
+            return;
+        }
+
+        if (tradingFeeRate < 0 || tradingFeeRate > 0.01) {
+            alert('请输入有效的交易费率（0-0.01）');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trading_frequency_minutes: tradingFrequency,
+                    trading_fee_rate: tradingFeeRate
+                })
+            });
+
+            if (response.ok) {
+                this.hideSettingsModal();
+                alert('设置保存成功');
+            } else {
+                alert('保存设置失败');
+            }
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            alert('保存设置失败');
+        }
     }
 }
 

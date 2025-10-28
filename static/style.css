@@ -629,6 +629,14 @@ body {
     box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.1);
 }
 
+.form-help {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-3);
+    line-height: 1.4;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
     .stats-grid {

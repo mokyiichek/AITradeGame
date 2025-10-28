@@ -93,7 +93,26 @@ class Database:
                 FOREIGN KEY (model_id) REFERENCES models(id)
             )
         ''')
-        
+
+        # Settings table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                trading_frequency_minutes INTEGER DEFAULT 60,
+                trading_fee_rate REAL DEFAULT 0.001,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Insert default settings if no settings exist
+        cursor.execute('SELECT COUNT(*) FROM settings')
+        if cursor.fetchone()[0] == 0:
+            cursor.execute('''
+                INSERT INTO settings (trading_frequency_minutes, trading_fee_rate)
+                VALUES (60, 0.001)
+            ''')
+
         conn.commit()
         conn.close()
     
@@ -413,4 +432,57 @@ class Database:
 
         conn.close()
         return chart_data
+
+    # ============ Settings Management ============
+
+    def get_settings(self) -> Dict:
+        """Get system settings"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT trading_frequency_minutes, trading_fee_rate
+            FROM settings
+            ORDER BY id DESC
+            LIMIT 1
+        ''')
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return {
+                'trading_frequency_minutes': row['trading_frequency_minutes'],
+                'trading_fee_rate': row['trading_fee_rate']
+            }
+        else:
+            # Return default settings if none exist
+            return {
+                'trading_frequency_minutes': 60,
+                'trading_fee_rate': 0.001
+            }
+
+    def update_settings(self, trading_frequency_minutes: int, trading_fee_rate: float) -> bool:
+        """Update system settings"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute('''
+                UPDATE settings
+                SET trading_frequency_minutes = ?,
+                    trading_fee_rate = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = (
+                    SELECT id FROM settings ORDER BY id DESC LIMIT 1
+                )
+            ''', (trading_frequency_minutes, trading_fee_rate))
+
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Error updating settings: {e}")
+            conn.close()
+            return False
 
