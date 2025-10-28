@@ -20,17 +20,29 @@ class Database:
         """Initialize database tables"""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
+        # Providers table (API提供方)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS providers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                api_url TEXT NOT NULL,
+                api_key TEXT NOT NULL,
+                models TEXT,  -- JSON string or comma-separated list of models
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
         # Models table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS models (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                api_key TEXT NOT NULL,
-                api_url TEXT NOT NULL,
+                provider_id INTEGER,
                 model_name TEXT NOT NULL,
                 initial_capital REAL DEFAULT 10000,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (provider_id) REFERENCES providers(id)
             )
         ''')
         
@@ -116,39 +128,7 @@ class Database:
         conn.commit()
         conn.close()
     
-    # ============ Model Management ============
-    
-    def add_model(self, name: str, api_key: str, api_url: str, 
-                   model_name: str, initial_capital: float = 10000) -> int:
-        """Add new trading model"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO models (name, api_key, api_url, model_name, initial_capital)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (name, api_key, api_url, model_name, initial_capital))
-        model_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return model_id
-    
-    def get_model(self, model_id: int) -> Optional[Dict]:
-        """Get model information"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM models WHERE id = ?', (model_id,))
-        row = cursor.fetchone()
-        conn.close()
-        return dict(row) if row else None
-    
-    def get_all_models(self) -> List[Dict]:
-        """Get all trading models"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM models ORDER BY created_at DESC')
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(row) for row in rows]
+    # ============ Model Management (Moved) ============
     
     def delete_model(self, model_id: int):
         """Delete model and related data"""
@@ -485,4 +465,100 @@ class Database:
             print(f"Error updating settings: {e}")
             conn.close()
             return False
+
+    # ============ Provider Management ============
+
+    def add_provider(self, name: str, api_url: str, api_key: str, models: str = '') -> int:
+        """Add new API provider"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO providers (name, api_url, api_key, models)
+            VALUES (?, ?, ?, ?)
+        ''', (name, api_url, api_key, models))
+        provider_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return provider_id
+
+    def get_provider(self, provider_id: int) -> Optional[Dict]:
+        """Get provider information"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM providers WHERE id = ?', (provider_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def get_all_providers(self) -> List[Dict]:
+        """Get all API providers"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM providers ORDER BY created_at DESC')
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    def delete_provider(self, provider_id: int):
+        """Delete provider"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM providers WHERE id = ?', (provider_id,))
+        conn.commit()
+        conn.close()
+
+    def update_provider(self, provider_id: int, name: str, api_url: str, api_key: str, models: str):
+        """Update provider information"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE providers
+            SET name = ?, api_url = ?, api_key = ?, models = ?
+            WHERE id = ?
+        ''', (name, api_url, api_key, models, provider_id))
+        conn.commit()
+        conn.close()
+
+    # ============ Model Management (Updated) ============
+
+    def add_model(self, name: str, provider_id: int, model_name: str, initial_capital: float = 10000) -> int:
+        """Add new trading model"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO models (name, provider_id, model_name, initial_capital)
+            VALUES (?, ?, ?, ?)
+        ''', (name, provider_id, model_name, initial_capital))
+        model_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return model_id
+
+    def get_model(self, model_id: int) -> Optional[Dict]:
+        """Get model information"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT m.*, p.api_key, p.api_url
+            FROM models m
+            LEFT JOIN providers p ON m.provider_id = p.id
+            WHERE m.id = ?
+        ''', (model_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def get_all_models(self) -> List[Dict]:
+        """Get all trading models"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT m.*, p.name as provider_name
+            FROM models m
+            LEFT JOIN providers p ON m.provider_id = p.id
+            ORDER BY m.created_at DESC
+        ''')
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
 

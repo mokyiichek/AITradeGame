@@ -19,7 +19,12 @@ Includes a Windows one-click standalone executable that runs without installatio
 ### Desktop Version (Local)
 
 AI-driven trading strategies based on large language models, compatible with OpenAI, DeepSeek, Claude, and other models. Leveraged portfolio management with ECharts visualizations. 100% privacy with all data stored in local database. Trading fee configuration supported to simulate real trading environment.
-https://github.com/chadyi/AITradeGame/releases/tag/main
+
+**Latest Features:**
+- API Provider Management: Unified management of multiple AI service provider API configurations
+- Smart Model Selection: Automatically fetch available model lists for each provider
+- Aggregated View: View aggregated assets and performance comparison across all models
+- System Settings: Configurable trading frequency and fee rates
 
 ### Online Version (Public)
 
@@ -39,7 +44,25 @@ Alternatively, clone the repository from GitHub. Install dependencies with pip i
 
 ## Configuration
 
-Configure AI models through the web interface opened by the software. Enter model name, API key, and API address. Choose your initial capital amount to start trading. You can customize the trading fee rate (default 0.1%) to simulate real exchange trading costs.
+### API Provider Setup
+First, add AI service providers:
+1. Click the "API Provider" button
+2. Enter provider name, API URL, and API key
+3. Manually input available models or click "Fetch Models" to auto-fetch
+4. Click save to complete configuration
+
+### Adding Trading Models
+After configuring providers, add trading models:
+1. Click the "Add Model" button
+2. Select a configured API provider
+3. Choose a specific model from the dropdown
+4. Enter display name and initial capital
+5. Click submit to start trading
+
+### System Settings
+Click the "Settings" button to configure:
+- Trading Frequency: Control AI decision interval (1-1440 minutes)
+- Trading Fee Rate: Commission rate per trade (default 0.1%)
 
 ## Supported AI Models
 

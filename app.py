@@ -21,6 +21,87 @@ TRADE_FEE_RATE = 0.001  # 默认交易费率
 def index():
     return render_template('index.html')
 
+# ============ Provider API Endpoints ============
+
+@app.route('/api/providers', methods=['GET'])
+def get_providers():
+    """Get all API providers"""
+    providers = db.get_all_providers()
+    return jsonify(providers)
+
+@app.route('/api/providers', methods=['POST'])
+def add_provider():
+    """Add new API provider"""
+    data = request.json
+    try:
+        provider_id = db.add_provider(
+            name=data['name'],
+            api_url=data['api_url'],
+            api_key=data['api_key'],
+            models=data.get('models', '')
+        )
+        return jsonify({'id': provider_id, 'message': 'Provider added successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/providers/<int:provider_id>', methods=['DELETE'])
+def delete_provider(provider_id):
+    """Delete API provider"""
+    try:
+        db.delete_provider(provider_id)
+        return jsonify({'message': 'Provider deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/providers/models', methods=['POST'])
+def fetch_provider_models():
+    """Fetch available models from provider's API"""
+    data = request.json
+    api_url = data.get('api_url')
+    api_key = data.get('api_key')
+
+    if not api_url or not api_key:
+        return jsonify({'error': 'API URL and key are required'}), 400
+
+    try:
+        # This is a placeholder - implement actual API call based on provider
+        # For now, return empty list or common models
+        models = []
+
+        # Try to detect provider type and call appropriate API
+        if 'openai.com' in api_url.lower():
+            # OpenAI API call
+            import requests
+            headers = {
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json'
+            }
+            response = requests.get(f'{api_url}/models', headers=headers, timeout=10)
+            if response.status_code == 200:
+                result = response.json()
+                models = [m['id'] for m in result.get('data', []) if 'gpt' in m['id'].lower()]
+        elif 'deepseek' in api_url.lower():
+            # DeepSeek API
+            import requests
+            headers = {
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json'
+            }
+            response = requests.get(f'{api_url}/models', headers=headers, timeout=10)
+            if response.status_code == 200:
+                result = response.json()
+                models = [m['id'] for m in result.get('data', [])]
+        else:
+            # Default: return common model names
+            models = ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo']
+
+        return jsonify({'models': models})
+    except Exception as e:
+        print(f"[ERROR] Fetch models failed: {e}")
+        return jsonify({'error': f'Failed to fetch models: {str(e)}'}), 500
+
+# ============ Model API Endpoints ============
+
 @app.route('/api/models', methods=['GET'])
 def get_models():
     models = db.get_all_models()
@@ -29,15 +110,19 @@ def get_models():
 @app.route('/api/models', methods=['POST'])
 def add_model():
     data = request.json
-    model_id = db.add_model(
-        name=data['name'],
-        api_key=data['api_key'],
-        api_url=data['api_url'],
-        model_name=data['model_name'],
-        initial_capital=float(data.get('initial_capital', 100000))
-    )
-    
     try:
+        # Get provider info
+        provider = db.get_provider(data['provider_id'])
+        if not provider:
+            return jsonify({'error': 'Provider not found'}), 404
+
+        model_id = db.add_model(
+            name=data['name'],
+            provider_id=data['provider_id'],
+            model_name=data['model_name'],
+            initial_capital=float(data.get('initial_capital', 100000))
+        )
+
         model = db.get_model(model_id)
         trading_engines[model_id] = TradingEngine(
             model_id=model_id,
@@ -51,10 +136,12 @@ def add_model():
             trade_fee_rate=TRADE_FEE_RATE  # 新增：传入费率
         )
         print(f"[INFO] Model {model_id} ({data['name']}) initialized")
+
+        return jsonify({'id': model_id, 'message': 'Model added successfully'})
+
     except Exception as e:
-        print(f"[ERROR] Model {model_id} initialization failed: {e}")
-    
-    return jsonify({'id': model_id, 'message': 'Model added successfully'})
+        print(f"[ERROR] Failed to add model: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/models/<int:model_id>', methods=['DELETE'])
 def delete_model(model_id):
@@ -184,14 +271,19 @@ def execute_trading(model_id):
         model = db.get_model(model_id)
         if not model:
             return jsonify({'error': 'Model not found'}), 404
-        
+
+        # Get provider info
+        provider = db.get_provider(model['provider_id'])
+        if not provider:
+            return jsonify({'error': 'Provider not found'}), 404
+
         trading_engines[model_id] = TradingEngine(
             model_id=model_id,
             db=db,
             market_fetcher=market_fetcher,
             ai_trader=AITrader(
-                api_key=model['api_key'],
-                api_url=model['api_url'],
+                api_key=provider['api_key'],
+                api_url=provider['api_url'],
                 model_name=model['model_name']
             ),
             trade_fee_rate=TRADE_FEE_RATE  # 新增：传入费率
@@ -309,34 +401,41 @@ def update_settings():
 def init_trading_engines():
     try:
         models = db.get_all_models()
-        
+
         if not models:
             print("[WARN] No trading models found")
             return
-        
+
         print(f"\n[INIT] Initializing trading engines...")
         for model in models:
             model_id = model['id']
             model_name = model['name']
-            
+
             try:
+                # Get provider info
+                provider = db.get_provider(model['provider_id'])
+                if not provider:
+                    print(f"  [WARN] Model {model_id} ({model_name}): Provider not found")
+                    continue
+
                 trading_engines[model_id] = TradingEngine(
                     model_id=model_id,
                     db=db,
                     market_fetcher=market_fetcher,
                     ai_trader=AITrader(
-                        api_key=model['api_key'],
-                        api_url=model['api_url'],
+                        api_key=provider['api_key'],
+                        api_url=provider['api_url'],
                         model_name=model['model_name']
-                    )
+                    ),
+                    trade_fee_rate=TRADE_FEE_RATE
                 )
                 print(f"  [OK] Model {model_id} ({model_name})")
             except Exception as e:
                 print(f"  [ERROR] Model {model_id} ({model_name}): {e}")
                 continue
-        
+
         print(f"[INFO] Initialized {len(trading_engines)} engine(s)\n")
-        
+
     except Exception as e:
         print(f"[ERROR] Init engines failed: {e}\n")
 

@@ -32,6 +32,10 @@
                         <i class="bi bi-gear"></i>
                         设置
                     </button>
+                    <button class="btn-secondary" id="addApiProviderBtn">
+                        <i class="bi bi-cloud-plus"></i>
+                        API提供方
+                    </button>
                     <button class="btn-primary" id="addModelBtn">
                         <i class="bi bi-plus-lg"></i>
                         添加模型
@@ -49,10 +53,10 @@
                     </div>
                     <div id="modelList" class="model-list"></div>
                 </div>
-
                 <div class="sidebar-section">
                     <div class="section-header">
                         <span>市场行情</span>
+                        <i class="bi bi-graph-up-arrow"></i>
                     </div>
                     <div id="marketPrices" class="market-prices"></div>
                 </div>
@@ -162,6 +166,50 @@
         </div>
     </div>
 
+    <!-- API Provider Modal -->
+    <div class="modal" id="apiProviderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>API提供方管理</h3>
+                <button class="btn-close" id="closeApiProviderModalBtn">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>API名称</label>
+                    <input type="text" id="providerName" placeholder="例如: OpenAI" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>API地址</label>
+                    <input type="text" id="providerApiUrl" placeholder="https://api.openai.com" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>API密钥</label>
+                    <input type="password" id="providerApiKey" placeholder="sk-..." class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>可用模型</label>
+                    <div class="model-input-group">
+                        <input type="text" id="availableModels" placeholder="gpt-4, gpt-3.5-turbo" class="form-input">
+                        <button type="button" class="btn-secondary" id="fetchModelsBtn">
+                            <i class="bi bi-arrow-clockwise"></i> 获取模型
+                        </button>
+                    </div>
+                    <small class="form-help">手动输入模型名称，用逗号分隔，或点击获取模型按钮自动获取</small>
+                </div>
+                <div class="form-group">
+                    <label>已保存的API提供方</label>
+                    <div id="providerList" class="provider-list"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelApiProviderBtn">取消</button>
+                <button class="btn-primary" id="saveApiProviderBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Model Modal -->
     <div class="modal" id="addModelModal">
         <div class="modal-content">
@@ -173,20 +221,21 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>名称</label>
-                    <input type="text" id="modelName" placeholder="例如: GPT-4" class="form-input">
+                    <label>选择API提供方</label>
+                    <select id="modelProvider" class="form-input">
+                        <option value="">请先添加API提供方</option>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>API密钥</label>
-                    <input type="password" id="apiKey" placeholder="sk-..." class="form-input">
+                    <label>模型</label>
+                    <select id="modelIdentifier" class="form-input">
+                        <option value="">请选择API提供方</option>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>API地址</label>
-                    <input type="text" id="apiUrl" placeholder="https://api.openai.com" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label>模型名称</label>
-                    <input type="text" id="modelIdentifier" placeholder="gpt-4" class="form-input">
+                    <label>模型显示名称</label>
+                    <input type="text" id="modelName" placeholder="例如: GPT-4交易员" class="form-input">
+                    <small class="form-help">用于显示的友好名称</small>
                 </div>
                 <div class="form-group">
                     <label>初始资金</label>

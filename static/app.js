@@ -67,17 +67,30 @@ class TradingApp {
     }
 
     initEventListeners() {
+        // API Provider Modal
+        document.getElementById('addApiProviderBtn').addEventListener('click', () => this.showApiProviderModal());
+        document.getElementById('closeApiProviderModalBtn').addEventListener('click', () => this.hideApiProviderModal());
+        document.getElementById('cancelApiProviderBtn').addEventListener('click', () => this.hideApiProviderModal());
+        document.getElementById('saveApiProviderBtn').addEventListener('click', () => this.saveApiProvider());
+        document.getElementById('fetchModelsBtn').addEventListener('click', () => this.fetchModels());
+
+        // Model Modal
         document.getElementById('addModelBtn').addEventListener('click', () => this.showModal());
         document.getElementById('closeModalBtn').addEventListener('click', () => this.hideModal());
         document.getElementById('cancelBtn').addEventListener('click', () => this.hideModal());
         document.getElementById('submitBtn').addEventListener('click', () => this.submitModel());
+        document.getElementById('modelProvider').addEventListener('change', (e) => this.updateModelOptions(e.target.value));
+
+        // Refresh
         document.getElementById('refreshBtn').addEventListener('click', () => this.refresh());
 
+        // Settings Modal
         document.getElementById('settingsBtn').addEventListener('click', () => this.showSettingsModal());
         document.getElementById('closeSettingsModalBtn').addEventListener('click', () => this.hideSettingsModal());
         document.getElementById('cancelSettingsBtn').addEventListener('click', () => this.hideSettingsModal());
         document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettings());
 
+        // Tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
         });
@@ -141,6 +154,7 @@ class TradingApp {
         this.currentModelId = null;
         this.loadModels();
         await this.loadAggregatedData();
+        this.hideTabsInAggregatedView();
     }
 
     async selectModel(modelId) {
@@ -148,6 +162,7 @@ class TradingApp {
         this.isAggregatedView = false;
         this.loadModels();
         await this.loadModelData();
+        this.showTabsInSingleModelView();
     }
 
     async loadModelData() {
@@ -177,11 +192,26 @@ class TradingApp {
 
             this.updateStats(data.portfolio, true);
             this.updateMultiModelChart(data.chart_data);
-            this.updatePositions(data.portfolio.positions, true);
-            this.updateTrades([]); // Empty trades for aggregated view
-            this.updateConversations([]); // Empty conversations for aggregated view
+            // Skip positions, trades, and conversations in aggregated view
+            this.hideTabsInAggregatedView();
         } catch (error) {
             console.error('Failed to load aggregated data:', error);
+        }
+    }
+
+    hideTabsInAggregatedView() {
+        // Hide the entire tabbed content section in aggregated view
+        const contentCard = document.querySelector('.content-card .card-tabs').parentElement;
+        if (contentCard) {
+            contentCard.style.display = 'none';
+        }
+    }
+
+    showTabsInSingleModelView() {
+        // Show the tabbed content section in single model view
+        const contentCard = document.querySelector('.content-card .card-tabs').parentElement;
+        if (contentCard) {
+            contentCard.style.display = 'block';
         }
     }
 
@@ -599,8 +629,202 @@ class TradingApp {
         document.getElementById(`${tabName}Tab`).classList.add('active');
     }
 
+    // API Provider Methods
+    async showApiProviderModal() {
+        this.loadProviders();
+        document.getElementById('apiProviderModal').classList.add('show');
+    }
+
+    hideApiProviderModal() {
+        document.getElementById('apiProviderModal').classList.remove('show');
+        this.clearApiProviderForm();
+    }
+
+    clearApiProviderForm() {
+        document.getElementById('providerName').value = '';
+        document.getElementById('providerApiUrl').value = '';
+        document.getElementById('providerApiKey').value = '';
+        document.getElementById('availableModels').value = '';
+    }
+
+    async saveApiProvider() {
+        const data = {
+            name: document.getElementById('providerName').value.trim(),
+            api_url: document.getElementById('providerApiUrl').value.trim(),
+            api_key: document.getElementById('providerApiKey').value,
+            models: document.getElementById('availableModels').value.trim()
+        };
+
+        if (!data.name || !data.api_url || !data.api_key) {
+            alert('请填写所有必填字段');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/providers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                this.hideApiProviderModal();
+                this.loadProviders();
+                alert('API提供方保存成功');
+            }
+        } catch (error) {
+            console.error('Failed to save provider:', error);
+            alert('保存API提供方失败');
+        }
+    }
+
+    async fetchModels() {
+        const apiUrl = document.getElementById('providerApiUrl').value.trim();
+        const apiKey = document.getElementById('providerApiKey').value;
+
+        if (!apiUrl || !apiKey) {
+            alert('请先填写API地址和密钥');
+            return;
+        }
+
+        const fetchBtn = document.getElementById('fetchModelsBtn');
+        const originalText = fetchBtn.innerHTML;
+        fetchBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> 获取中...';
+        fetchBtn.disabled = true;
+
+        try {
+            const response = await fetch('/api/providers/models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_url: apiUrl, api_key: apiKey })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.models && data.models.length > 0) {
+                    document.getElementById('availableModels').value = data.models.join(', ');
+                    alert(`成功获取 ${data.models.length} 个模型`);
+                } else {
+                    alert('未获取到模型列表，请手动输入');
+                }
+            } else {
+                alert('获取模型列表失败，请检查API地址和密钥');
+            }
+        } catch (error) {
+            console.error('Failed to fetch models:', error);
+            alert('获取模型列表失败');
+        } finally {
+            fetchBtn.innerHTML = originalText;
+            fetchBtn.disabled = false;
+        }
+    }
+
+    async loadProviders() {
+        try {
+            const response = await fetch('/api/providers');
+            const providers = await response.json();
+            this.providers = providers;
+            this.renderProviders(providers);
+            this.updateModelProviderSelect(providers);
+        } catch (error) {
+            console.error('Failed to load providers:', error);
+        }
+    }
+
+    renderProviders(providers) {
+        const container = document.getElementById('providerList');
+
+        if (providers.length === 0) {
+            container.innerHTML = '<div class="empty-state">暂无API提供方</div>';
+            return;
+        }
+
+        container.innerHTML = providers.map(provider => {
+            const models = provider.models ? provider.models.split(',').map(m => m.trim()) : [];
+            const modelsHtml = models.map(model => `<span class="model-tag">${model}</span>`).join('');
+
+            return `
+                <div class="provider-item">
+                    <div class="provider-info">
+                        <div class="provider-name">${provider.name}</div>
+                        <div class="provider-url">${provider.api_url}</div>
+                        <div class="provider-models">${modelsHtml}</div>
+                    </div>
+                    <div class="provider-actions">
+                        <span class="provider-delete" onclick="app.deleteProvider(${provider.id})" title="删除">
+                            <i class="bi bi-trash"></i>
+                        </span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    updateModelProviderSelect(providers) {
+        const select = document.getElementById('modelProvider');
+        const currentValue = select.value;
+
+        select.innerHTML = '<option value="">请选择API提供方</option>';
+        providers.forEach(provider => {
+            const option = document.createElement('option');
+            option.value = provider.id;
+            option.textContent = provider.name;
+            select.appendChild(option);
+        });
+
+        // Restore previous selection if still exists
+        if (currentValue && providers.find(p => p.id == currentValue)) {
+            select.value = currentValue;
+            this.updateModelOptions(currentValue);
+        }
+    }
+
+    updateModelOptions(providerId) {
+        const modelSelect = document.getElementById('modelIdentifier');
+        const providerSelect = document.getElementById('modelProvider');
+
+        if (!providerId) {
+            modelSelect.innerHTML = '<option value="">请选择API提供方</option>';
+            return;
+        }
+
+        // Find the selected provider
+        const provider = this.providers?.find(p => p.id == providerId);
+        if (!provider || !provider.models) {
+            modelSelect.innerHTML = '<option value="">该提供方暂无模型</option>';
+            return;
+        }
+
+        const models = provider.models.split(',').map(m => m.trim()).filter(m => m);
+        modelSelect.innerHTML = '<option value="">请选择模型</option>';
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            modelSelect.appendChild(option);
+        });
+    }
+
+    async deleteProvider(providerId) {
+        if (!confirm('确定要删除这个API提供方吗？')) return;
+
+        try {
+            const response = await fetch(`/api/providers/${providerId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                this.loadProviders();
+            }
+        } catch (error) {
+            console.error('Failed to delete provider:', error);
+        }
+    }
+
     showModal() {
-        document.getElementById('addModelModal').classList.add('show');
+        this.loadProviders().then(() => {
+            document.getElementById('addModelModal').classList.add('show');
+        });
     }
 
     hideModal() {
@@ -608,15 +832,12 @@ class TradingApp {
     }
 
     async submitModel() {
-        const data = {
-            name: document.getElementById('modelName').value,
-            api_key: document.getElementById('apiKey').value,
-            api_url: document.getElementById('apiUrl').value,
-            model_name: document.getElementById('modelIdentifier').value,
-            initial_capital: parseFloat(document.getElementById('initialCapital').value)
-        };
+        const providerId = document.getElementById('modelProvider').value;
+        const modelName = document.getElementById('modelIdentifier').value;
+        const displayName = document.getElementById('modelName').value.trim();
+        const initialCapital = parseFloat(document.getElementById('initialCapital').value);
 
-        if (!data.name || !data.api_key || !data.api_url || !data.model_name) {
+        if (!providerId || !modelName || !displayName) {
             alert('请填写所有必填字段');
             return;
         }
@@ -625,7 +846,12 @@ class TradingApp {
             const response = await fetch('/api/models', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                    provider_id: providerId,
+                    model_name: modelName,
+                    name: displayName,
+                    initial_capital: initialCapital
+                })
             });
 
             if (response.ok) {
@@ -661,10 +887,9 @@ class TradingApp {
     }
 
     clearForm() {
-        document.getElementById('modelName').value = '';
-        document.getElementById('apiKey').value = '';
-        document.getElementById('apiUrl').value = '';
+        document.getElementById('modelProvider').value = '';
         document.getElementById('modelIdentifier').value = '';
+        document.getElementById('modelName').value = '';
         document.getElementById('initialCapital').value = '100000';
     }
 

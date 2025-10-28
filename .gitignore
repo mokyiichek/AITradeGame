@@ -88,3 +88,4 @@ config.py
 build_package.py
 一键打包.bat
 build_all.py
+AITradeGame.db.backup
