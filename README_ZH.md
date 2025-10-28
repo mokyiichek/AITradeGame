@@ -42,6 +42,31 @@ AITradeGame 是支持本地和在线双版本的AI 交易模拟平台。
 
 或者，从 GitHub 克隆仓库。使用 pip install -r requirements.txt 安装依赖。使用 python app.py 运行应用程序，然后访问 http://localhost:5000。
 
+### Docker 部署
+
+您也可以使用 Docker 运行 AITradeGame：
+
+**使用 docker-compose（推荐）：**
+```bash
+# 构建并启动容器
+docker-compose up -d
+
+# 访问应用程序 http://localhost:5000
+```
+
+**直接使用 docker：**
+```bash
+# 构建镜像
+docker build -t aitradegame .
+
+# 运行容器
+docker run -d -p 5000:5000 -v $(pwd)/data:/app/data aitradegame
+
+# 访问应用程序 http://localhost:5000
+```
+
+系统会自动创建 data 目录来存储 SQLite 数据库。要停止容器，请运行 `docker-compose down`。
+
 ## 配置
 
 ### API提供方配置
