@@ -3,7 +3,6 @@ from flask_cors import CORS
 import time
 import threading
 from datetime import datetime
-
 from trading_engine import TradingEngine
 from market_data import MarketDataFetcher
 from ai_trader import AITrader
@@ -16,6 +15,7 @@ db = Database('AITradeGame.db')
 market_fetcher = MarketDataFetcher()
 trading_engines = {}
 auto_trading = True
+TRADE_FEE_RATE = 0.001  # 默认交易费率
 
 @app.route('/')
 def index():
@@ -47,7 +47,8 @@ def add_model():
                 api_key=model['api_key'],
                 api_url=model['api_url'],
                 model_name=model['model_name']
-            )
+            ),
+            trade_fee_rate=TRADE_FEE_RATE  # 新增：传入费率
         )
         print(f"[INFO] Model {model_id} ({data['name']}) initialized")
     except Exception as e:
@@ -117,7 +118,8 @@ def execute_trading(model_id):
                 api_key=model['api_key'],
                 api_url=model['api_url'],
                 model_name=model['model_name']
-            )
+            ),
+            trade_fee_rate=TRADE_FEE_RATE  # 新增：传入费率
         )
     
     try:

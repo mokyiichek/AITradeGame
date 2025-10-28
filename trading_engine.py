@@ -3,12 +3,13 @@ from typing import Dict
 import json
 
 class TradingEngine:
-    def __init__(self, model_id: int, db, market_fetcher, ai_trader):
+    def __init__(self, model_id: int, db, market_fetcher, ai_trader, trade_fee_rate: float = 0.001):
         self.model_id = model_id
         self.db = db
         self.market_fetcher = market_fetcher
         self.ai_trader = ai_trader
         self.coins = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE']
+        self.trade_fee_rate = trade_fee_rate  # 从配置中传入费率
     
     def execute_trading_cycle(self) -> Dict:
         try:
@@ -123,17 +124,25 @@ class TradingEngine:
         if quantity <= 0:
             return {'coin': coin, 'error': 'Invalid quantity'}
         
-        required_margin = (quantity * price) / leverage
-        if required_margin > portfolio['cash']:
-            return {'coin': coin, 'error': 'Insufficient cash'}
+        # 计算交易额和交易费（按交易额的比例）
+        trade_amount = quantity * price  # 交易额
+        trade_fee = trade_amount * self.trade_fee_rate  # 交易费（0.1%）
+        required_margin = (quantity * price) / leverage  # 保证金
         
+        # 总需资金 = 保证金 + 交易费
+        total_required = required_margin + trade_fee
+        if total_required > portfolio['cash']:
+            return {'coin': coin, 'error': 'Insufficient cash (including fees)'}
+        
+        # 更新持仓
         self.db.update_position(
             self.model_id, coin, quantity, price, leverage, 'long'
         )
         
+        # 记录交易（包含交易费）
         self.db.add_trade(
             self.model_id, coin, 'buy_to_enter', quantity, 
-            price, leverage, 'long', pnl=0
+            price, leverage, 'long', pnl=0, fee=trade_fee  # 新增fee参数
         )
         
         return {
@@ -142,11 +151,12 @@ class TradingEngine:
             'quantity': quantity,
             'price': price,
             'leverage': leverage,
-            'message': f'Long {quantity:.4f} {coin} @ ${price:.2f}'
+            'fee': trade_fee,  # 返回费用信息
+            'message': f'Long {quantity:.4f} {coin} @ ${price:.2f} (Fee: ${trade_fee:.2f})'
         }
     
     def _execute_sell(self, coin: str, decision: Dict, market_state: Dict, 
-                     portfolio: Dict) -> Dict:
+                 portfolio: Dict) -> Dict:
         quantity = float(decision.get('quantity', 0))
         leverage = int(decision.get('leverage', 1))
         price = market_state[coin]['price']
@@ -154,17 +164,25 @@ class TradingEngine:
         if quantity <= 0:
             return {'coin': coin, 'error': 'Invalid quantity'}
         
+        # 计算交易额和交易费
+        trade_amount = quantity * price
+        trade_fee = trade_amount * self.trade_fee_rate
         required_margin = (quantity * price) / leverage
-        if required_margin > portfolio['cash']:
-            return {'coin': coin, 'error': 'Insufficient cash'}
         
+        # 总需资金 = 保证金 + 交易费
+        total_required = required_margin + trade_fee
+        if total_required > portfolio['cash']:
+            return {'coin': coin, 'error': 'Insufficient cash (including fees)'}
+        
+        # 更新持仓
         self.db.update_position(
             self.model_id, coin, quantity, price, leverage, 'short'
         )
         
+        # 记录交易（包含交易费）
         self.db.add_trade(
             self.model_id, coin, 'sell_to_enter', quantity, 
-            price, leverage, 'short', pnl=0
+            price, leverage, 'short', pnl=0, fee=trade_fee  # 新增fee参数
         )
         
         return {
@@ -173,11 +191,12 @@ class TradingEngine:
             'quantity': quantity,
             'price': price,
             'leverage': leverage,
-            'message': f'Short {quantity:.4f} {coin} @ ${price:.2f}'
+            'fee': trade_fee,
+            'message': f'Short {quantity:.4f} {coin} @ ${price:.2f} (Fee: ${trade_fee:.2f})'
         }
     
     def _execute_close(self, coin: str, decision: Dict, market_state: Dict, 
-                      portfolio: Dict) -> Dict:
+                    portfolio: Dict) -> Dict:
         position = None
         for pos in portfolio['positions']:
             if pos['coin'] == coin:
@@ -192,16 +211,24 @@ class TradingEngine:
         quantity = position['quantity']
         side = position['side']
         
+        # 计算平仓利润（未扣费）
         if side == 'long':
-            pnl = (current_price - entry_price) * quantity
-        else:
-            pnl = (entry_price - current_price) * quantity
+            gross_pnl = (current_price - entry_price) * quantity
+        else:  # short
+            gross_pnl = (entry_price - current_price) * quantity
         
+        # 计算平仓交易费（按平仓时的交易额）
+        trade_amount = quantity * current_price
+        trade_fee = trade_amount * self.trade_fee_rate
+        net_pnl = gross_pnl - trade_fee  # 净利润 = 毛利润 - 交易费
+        
+        # 关闭持仓
         self.db.close_position(self.model_id, coin, side)
         
+        # 记录平仓交易（包含费用和净利润）
         self.db.add_trade(
             self.model_id, coin, 'close_position', quantity,
-            current_price, position['leverage'], side, pnl=pnl
+            current_price, position['leverage'], side, pnl=net_pnl, fee=trade_fee  # 新增fee参数
         )
         
         return {
@@ -209,6 +236,7 @@ class TradingEngine:
             'signal': 'close_position',
             'quantity': quantity,
             'price': current_price,
-            'pnl': pnl,
-            'message': f'Close {coin}, P&L: ${pnl:.2f}'
+            'pnl': net_pnl,
+            'fee': trade_fee,
+            'message': f'Close {coin}, Gross P&L: ${gross_pnl:.2f}, Fee: ${trade_fee:.2f}, Net P&L: ${net_pnl:.2f}'
         }

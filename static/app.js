@@ -268,6 +268,7 @@ class TradingApp {
                     <td>${trade.quantity.toFixed(4)}</td>
                     <td>$${trade.price.toFixed(2)}</td>
                     <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
+                    <td>$${trade.fee.toFixed(2)}</td>
                 </tr>
             `;
         }).join('');
