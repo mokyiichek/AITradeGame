@@ -18,7 +18,7 @@ Includes a Windows one-click standalone executable that runs without installatio
 
 ### Desktop Version (Local)
 
-AI-driven trading strategies based on large language models, compatible with OpenAI, DeepSeek, Claude, and other models. Leveraged portfolio management with ECharts visualizations. 100% privacy with all data stored in local database.
+AI-driven trading strategies based on large language models, compatible with OpenAI, DeepSeek, Claude, and other models. Leveraged portfolio management with ECharts visualizations. 100% privacy with all data stored in local database. Trading fee configuration supported to simulate real trading environment.
 https://github.com/chadyi/AITradeGame/releases/tag/main
 
 ### Online Version (Public)
@@ -39,7 +39,7 @@ Alternatively, clone the repository from GitHub. Install dependencies with pip i
 
 ## Configuration
 
-Configure AI models through the web interface opened by the software. Enter model name, API key, and API address. Choose your initial capital amount to start trading.
+Configure AI models through the web interface opened by the software. Enter model name, API key, and API address. Choose your initial capital amount to start trading. You can customize the trading fee rate (default 0.1%) to simulate real exchange trading costs.
 
 ## Supported AI Models
 
@@ -47,7 +47,7 @@ Supports all OpenAI-compatible APIs. This includes OpenAI models like gpt-4 and 
 
 ## Usage
 
-Start the server by running AITradeGame.exe or python app.py. Add AI model configuration through the web interface at http://localhost:5000. The system automatically begins trading simulation based on your configuration.
+Start the server by running AITradeGame.exe or python app.py. Add AI model configuration through the web interface at http://localhost:5000. The system automatically begins trading simulation based on your configuration. Trading fees are charged for each open and close position according to the set rate, ensuring AI strategies operate under realistic cost conditions.
 
 ## Privacy and Security
 
