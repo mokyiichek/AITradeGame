@@ -64,9 +64,16 @@ class TradingApp {
         this.loadModels();
         this.loadMarketPrices();
         this.startRefreshCycles();
+        // Check for updates after initialization (with delay)
+        setTimeout(() => this.checkForUpdates(true), 3000);
     }
 
     initEventListeners() {
+        // Update Modal
+        document.getElementById('checkUpdateBtn').addEventListener('click', () => this.checkForUpdates());
+        document.getElementById('closeUpdateModalBtn').addEventListener('click', () => this.hideUpdateModal());
+        document.getElementById('dismissUpdateBtn').addEventListener('click', () => this.dismissUpdate());
+
         // API Provider Modal
         document.getElementById('addApiProviderBtn').addEventListener('click', () => this.showApiProviderModal());
         document.getElementById('closeApiProviderModalBtn').addEventListener('click', () => this.hideApiProviderModal());
@@ -976,6 +983,107 @@ class TradingApp {
             console.error('Failed to save settings:', error);
             alert('保存设置失败');
         }
+    }
+
+    // ============ Update Check Methods ============
+
+    async checkForUpdates(silent = false) {
+        try {
+            const response = await fetch('/api/check-update');
+            const data = await response.json();
+
+            if (data.update_available) {
+                this.showUpdateModal(data);
+                this.showUpdateIndicator();
+            } else if (!silent) {
+                if (data.error) {
+                    console.warn('Update check failed:', data.error);
+                } else {
+                    // Already on latest version
+                    this.showUpdateIndicator(true);
+                    setTimeout(() => this.hideUpdateIndicator(), 2000);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to check for updates:', error);
+            if (!silent) {
+                alert('检查更新失败，请稍后重试');
+            }
+        }
+    }
+
+    showUpdateModal(data) {
+        const modal = document.getElementById('updateModal');
+        const currentVersion = document.getElementById('currentVersion');
+        const latestVersion = document.getElementById('latestVersion');
+        const releaseNotes = document.getElementById('releaseNotes');
+        const githubLink = document.getElementById('githubLink');
+
+        currentVersion.textContent = `v${data.current_version}`;
+        latestVersion.textContent = `v${data.latest_version}`;
+        githubLink.href = data.release_url || data.repo_url;
+
+        // Format release notes
+        if (data.release_notes) {
+            releaseNotes.innerHTML = this.formatReleaseNotes(data.release_notes);
+        } else {
+            releaseNotes.innerHTML = '<p>暂无更新说明</p>';
+        }
+
+        modal.classList.add('show');
+    }
+
+    hideUpdateModal() {
+        document.getElementById('updateModal').classList.remove('show');
+    }
+
+    dismissUpdate() {
+        this.hideUpdateModal();
+        // Hide indicator temporarily, check again in 24 hours
+        this.hideUpdateIndicator();
+
+        // Store dismissal timestamp in localStorage
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        localStorage.setItem('updateDismissedUntil', tomorrow.getTime().toString());
+    }
+
+    formatReleaseNotes(notes) {
+        // Simple markdown-like formatting
+        let formatted = notes
+            .replace(/### (.*)/g, '<h3>$1</h3>')
+            .replace(/## (.*)/g, '<h2>$1</h2>')
+            .replace(/# (.*)/g, '<h1>$1</h1>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+            .replace(/^-\s+(.*)/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/^(.*)/, '<p>$1')
+            .replace(/(.*)$/, '$1</p>');
+
+        // Clean up extra <p> tags around block elements
+        formatted = formatted.replace(/<p>(<h\d+>.*<\/h\d+>)<\/p>/g, '$1');
+        formatted = formatted.replace(/<p>(<ul>.*<\/ul>)<\/p>/g, '$1');
+
+        return formatted;
+    }
+
+    showUpdateIndicator() {
+        const indicator = document.getElementById('updateIndicator');
+        // Check if dismissed recently
+        const dismissedUntil = localStorage.getItem('updateDismissedUntil');
+        if (dismissedUntil && Date.now() < parseInt(dismissedUntil)) {
+            return;
+        }
+        indicator.style.display = 'block';
+    }
+
+    hideUpdateIndicator() {
+        const indicator = document.getElementById('updateIndicator');
+        indicator.style.display = 'none';
     }
 }
 

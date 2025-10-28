@@ -25,6 +25,11 @@
                     </a>
                 </div>
                 <div class="header-right">
+                    <div class="update-indicator" id="updateIndicator" style="display: none;">
+                        <button class="btn-icon update-btn" id="checkUpdateBtn" title="检查更新">
+                            <i class="bi bi-arrow-up-circle"></i>
+                        </button>
+                    </div>
                     <button class="btn-icon" id="refreshBtn" title="刷新">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
@@ -273,6 +278,56 @@
             <div class="modal-footer">
                 <button class="btn-secondary" id="cancelSettingsBtn">取消</button>
                 <button class="btn-primary" id="saveSettingsBtn">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Notification Modal -->
+    <div class="modal" id="updateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>
+                    <i class="bi bi-cloud-download text-info"></i>
+                    发现新版本
+                </h3>
+                <button class="btn-close" id="closeUpdateModalBtn">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="update-info">
+                    <div class="update-version">
+                        <div class="current-version">
+                            <i class="bi bi-cpu"></i>
+                            <span>当前版本：</span>
+                            <strong id="currentVersion">v1.0.0</strong>
+                        </div>
+                        <div class="arrow-down">
+                            <i class="bi bi-arrow-down"></i>
+                        </div>
+                        <div class="latest-version">
+                            <i class="bi bi-gem"></i>
+                            <span>最新版本：</span>
+                            <strong id="latestVersion" class="text-success">v1.1.0</strong>
+                        </div>
+                    </div>
+                    <div class="update-notes">
+                        <div class="notes-header">
+                            <i class="bi bi-journal-text"></i>
+                            <span>更新说明</span>
+                        </div>
+                        <div id="releaseNotes" class="notes-content">
+                            <p>新功能和改进将在此处显示...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="dismissUpdateBtn">稍后提醒</button>
+                <a href="#" id="githubLink" class="btn-primary" target="_blank">
+                    <i class="bi bi-github"></i>
+                    前往GitHub
+                </a>
             </div>
         </div>
     </div>
