@@ -300,11 +300,13 @@ body {
 
 /* In Chinese: positive (up) is red, negative (down) is green */
 .price-change.positive {
-    color: var(--danger);
+    /* Western convention: positive (up) -> green */
+    color: var(--success);
 }
 
 .price-change.negative {
-    color: var(--success);
+    /* Western convention: negative (down) -> red */
+    color: var(--danger);
 }
 
 /* Main Content */
@@ -356,11 +358,11 @@ body {
 
 /* In Chinese: positive (profit) is red, negative (loss) is green */
 .stat-value.positive {
-    color: var(--danger);
+    color: var(--success);
 }
 
 .stat-value.negative {
-    color: var(--success);
+    color: var(--danger);
 }
 
 .text-primary { color: var(--primary); }
@@ -371,12 +373,12 @@ body {
 
 /* PnL colors for tables - Chinese convention */
 .data-table td.positive {
-    color: var(--danger);
+    color: var(--success);
     font-weight: 600;
 }
 
 .data-table td.negative {
-    color: var(--success);
+    color: var(--danger);
     font-weight: 600;
 }
 
@@ -495,13 +497,15 @@ body {
 }
 
 .badge-long {
-    background: #ffe7e7;
-    color: #f53f3f;
+    /* long => green */
+    background: #e8ffea;
+    color: #00b42a;
 }
 
 .badge-short {
-    background: #e8ffea;
-    color: #00b42a;
+    /* short => red */
+    background: #ffe7e7;
+    color: #f53f3f;
 }
 
 .badge-buy {
