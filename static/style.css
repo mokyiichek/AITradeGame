@@ -298,13 +298,13 @@ body {
     margin-top: 2px;
 }
 
-/* In Chinese: positive (up) is red, negative (down) is green */
+/* Positive (up) values should appear green, negatives red */
 .price-change.positive {
-    color: var(--danger);
+    color: var(--success);
 }
 
 .price-change.negative {
-    color: var(--success);
+    color: var(--danger);
 }
 
 /* Main Content */
@@ -354,13 +354,13 @@ body {
     color: var(--text-1);
 }
 
-/* In Chinese: positive (profit) is red, negative (loss) is green */
+/* Positive (profit) values are green, losses are red */
 .stat-value.positive {
-    color: var(--danger);
+    color: var(--success);
 }
 
 .stat-value.negative {
-    color: var(--success);
+    color: var(--danger);
 }
 
 .text-primary { color: var(--primary); }
@@ -369,14 +369,14 @@ body {
 .text-danger { color: var(--danger); }
 .text-info { color: var(--info); }
 
-/* PnL colors for tables - Chinese convention */
+/* PnL colors for tables */
 .data-table td.positive {
-    color: var(--danger);
+    color: var(--success);
     font-weight: 600;
 }
 
 .data-table td.negative {
-    color: var(--success);
+    color: var(--danger);
     font-weight: 600;
 }
 
